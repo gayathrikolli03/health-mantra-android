@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Health Mantra</string>
+    <string name="add_exercise">Add Exercise</string>
+    <string name="sync_google_health">Sync Google Health</string>
+    <string name="view_conflicts">View Conflicts</string>
+    <string name="resolve_conflicts">Resolve Conflicts</string>
+    <string name="no_exercises">No exercises logged yet</string>
+    <string name="no_conflicts">No conflicts found!</string>
+</resources>
