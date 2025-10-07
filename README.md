@@ -57,5 +57,3 @@ An Android application for scheduling and managing exercise routines with intell
 - Select which exercise to keep with one tap
 - Other conflicting exercises automatically removed
 - UI updates reactively
-
-## 🏗️ Project Structure
