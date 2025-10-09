@@ -1,5 +1,6 @@
 package com.example.healthmantra.data.repository
 
+import com.example.healthmantra.data.health.HealthConnectManager
 import com.example.healthmantra.data.local.ExerciseDao
 import com.example.healthmantra.data.model.ConflictGroup
 import com.example.healthmantra.data.model.Exercise
@@ -13,21 +14,22 @@ import javax.inject.Singleton
 
 @Singleton
 class ExerciseRepository @Inject constructor(
-    private val exerciseDao: ExerciseDao
+    private val exerciseDao: ExerciseDao,
+    private val healthConnectManager: HealthConnectManager
 ) {
 
     fun getAllExercises(): Flow<List<Exercise>> {
-        // Only get exercises from today onwards
-        val startOfToday = getStartOfToday()
+        val currentTime = System.currentTimeMillis()
         return exerciseDao.getAllExercises().map { exercises ->
-            exercises.filter { it.date >= startOfToday }
+            exercises.filter { it.date >= currentTime }
+                .sortedBy { it.date }
         }
     }
 
     fun getConflictGroups(): Flow<List<ConflictGroup>> {
         return exerciseDao.getConflictedExercises().map { exercises ->
-            val startOfToday = getStartOfToday()
-            exercises.filter { it.date >= startOfToday }
+            val currentTime = System.currentTimeMillis()
+            exercises.filter { it.date >= currentTime }
                 .groupBy { it.conflictGroupId }
                 .filter { it.key != null }
                 .map { (groupId, groupExercises) ->
@@ -37,65 +39,56 @@ class ExerciseRepository @Inject constructor(
                         date = groupExercises.minOf { it.date }
                     )
                 }
-                .sortedBy { it.date } // Sort by date ascending (upcoming first)
+                .sortedBy { it.date }
         }
     }
 
     suspend fun addExercise(exercise: Exercise) {
+        if (exercise.date < System.currentTimeMillis()) {
+            return
+        }
         exerciseDao.insertExercise(exercise)
         cleanupPastExercises()
         detectConflicts()
     }
 
-    suspend fun syncFromGoogleHealth() {
-        val existingExercises = exerciseDao.getAllExercises().first()
-        val hasGoogleHealthData = existingExercises.any { it.source == ExerciseSource.GOOGLE_HEALTH }
-
-        if (hasGoogleHealthData) {
-            detectConflicts()
+    suspend fun syncFromHealthConnect() {
+        if (!healthConnectManager.isAvailable()) {
             return
         }
 
-        val currentTime = System.currentTimeMillis()
+        if (!healthConnectManager.hasAllPermissions()) {
+            return
+        }
 
-        // Create exercises that are always in the future
-        val googleExercises = listOf(
-            Exercise(
-                name = "Morning Yoga",
-                duration = 30,
-                calories = 150,
-                date = currentTime + (2 * 60 * 60 * 1000L), // 2 hours from now
-                source = ExerciseSource.GOOGLE_HEALTH
-            ),
-            Exercise(
-                name = "Evening Run",
-                duration = 45,
-                calories = 400,
-                date = currentTime + (4 * 60 * 60 * 1000L), // 4 hours from now
-                source = ExerciseSource.GOOGLE_HEALTH
-            ),
-            Exercise(
-                name = "Swimming",
-                duration = 60,
-                calories = 500,
-                date = currentTime + (24 * 60 * 60 * 1000L), // Tomorrow same time
-                source = ExerciseSource.GOOGLE_HEALTH
-            )
-        )
-        exerciseDao.insertExercises(googleExercises)
-        cleanupPastExercises()
-        detectConflicts()
+        val exercises = healthConnectManager.readExercises()
+
+        if (exercises.isNotEmpty()) {
+            exerciseDao.insertExercises(exercises)
+            cleanupPastExercises()
+            detectConflicts()
+        }
     }
+
+    suspend fun isHealthConnectAvailable(): Boolean {
+        return healthConnectManager.isAvailable()
+    }
+
+    suspend fun hasHealthConnectPermissions(): Boolean {
+        return healthConnectManager.hasAllPermissions()
+    }
+
+    fun getHealthConnectPermissions() = healthConnectManager.permissions
+
     suspend fun detectConflictsManually() {
         detectConflicts()
     }
 
     private suspend fun detectConflicts() {
         val allExercises = exerciseDao.getAllExercises().first()
-        val startOfToday = getStartOfToday()
-        val todayAndFuture = allExercises.filter { it.date >= startOfToday }
+        val currentTime = System.currentTimeMillis()
+        val todayAndFuture = allExercises.filter { it.date >= currentTime }
 
-        // Clear existing conflicts
         todayAndFuture.filter { it.isConflicted }.forEach { exercise ->
             exerciseDao.updateExercise(
                 exercise.copy(isConflicted = false, conflictGroupId = null)
@@ -138,9 +131,9 @@ class ExerciseRepository @Inject constructor(
     }
 
     private suspend fun cleanupPastExercises() {
-        val startOfToday = getStartOfToday()
+        val currentTime = System.currentTimeMillis()
         val allExercises = exerciseDao.getAllExercises().first()
-        val pastExercises = allExercises.filter { it.date < startOfToday }
+        val pastExercises = allExercises.filter { it.date < currentTime }
 
         if (pastExercises.isNotEmpty()) {
             exerciseDao.deleteExercisesByIds(pastExercises.map { it.id })

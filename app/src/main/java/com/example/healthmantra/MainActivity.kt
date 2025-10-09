@@ -16,11 +16,13 @@ import com.example.healthmantra.ui.conflicts.ConflictsScreen
 import com.example.healthmantra.ui.home.HomeScreen
 import com.example.healthmantra.ui.theme.HealthMantraTheme
 import dagger.hilt.android.AndroidEntryPoint
+import android.util.Log
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("TEST", "🟢🟢🟢 MainActivity onCreate - APP STARTED 🟢🟢🟢")
         enableEdgeToEdge()
         setContent {
             HealthMantraTheme {

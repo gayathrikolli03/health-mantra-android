@@ -2,6 +2,7 @@ package com.example.healthmantra.di
 
 import android.content.Context
 import androidx.room.Room
+import com.example.healthmantra.data.health.HealthConnectManager
 import com.example.healthmantra.data.local.AppDatabase
 import com.example.healthmantra.data.local.ExerciseDao
 import dagger.Module
@@ -29,5 +30,13 @@ object AppModule {
     @Singleton
     fun provideExerciseDao(database: AppDatabase): ExerciseDao {
         return database.exerciseDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideHealthConnectManager(
+        @ApplicationContext context: Context
+    ): HealthConnectManager {
+        return HealthConnectManager(context)
     }
 }

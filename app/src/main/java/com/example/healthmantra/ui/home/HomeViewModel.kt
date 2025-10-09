@@ -54,13 +54,13 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun syncFromGoogleHealth() {
+    fun syncFromHealthConnect() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true) }
             try {
-                repository.syncFromGoogleHealth()
+                repository.syncFromHealthConnect()
             } catch (e: Exception) {
-                // Log error
+                // Handle error
             } finally {
                 _uiState.update { it.copy(isSyncing = false) }
             }

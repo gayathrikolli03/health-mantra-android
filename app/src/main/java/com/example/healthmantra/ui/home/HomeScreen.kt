@@ -15,10 +15,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
 import com.example.healthmantra.ui.components.EmptyState
 import com.example.healthmantra.ui.components.ExerciseCard
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.activity.result.contract.ActivityResultContracts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +30,15 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+
+    // Health Connect Permission Launcher
+    val healthConnectPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        if (granted.values.all { it }) {
+            viewModel.syncFromHealthConnect()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -64,7 +75,11 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FloatingActionButton(
-                    onClick = { viewModel.syncFromGoogleHealth() },
+                    onClick = {
+                        healthConnectPermissionLauncher.launch(
+                            arrayOf("android.permission.health.READ_EXERCISE")
+                        )
+                    },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     if (uiState.isSyncing) {
@@ -75,7 +90,7 @@ fun HomeScreen(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Sync,
-                            contentDescription = "Sync Google Health"
+                            contentDescription = "Sync Health Connect"
                         )
                     }
                 }
@@ -128,6 +143,8 @@ fun HomeScreen(
         )
     }
 }
+
+// Keep your existing AddExerciseDialog function here - don't change it
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
